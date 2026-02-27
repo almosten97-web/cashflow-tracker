@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cash App / PayPal Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>Cash App &amp; PayPal Tracker</h1>
+  <div id="summary-bar" class="summary-bar hidden">
+    <span id="summary-income"></span>
+    <span id="summary-fees"></span>
+    <span id="summary-txns"></span>
+    <span id="bitcoin-notice" class="bitcoin-badge hidden">⚠ Bitcoin rows excluded</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- Upload Section -->
+  <section id="upload-section" class="upload-section">
+    <div class="upload-instructions">
+      <div class="step">
+        <strong>Cash App:</strong> Profile → Documents → Transaction History → Export CSV
+      </div>
+      <div class="step">
+        <strong>PayPal:</strong> Activity → Statements → Download → CSV (All Transactions)
+      </div>
+    </div>
+    <div id="drop-zone" class="drop-zone">
+      <p>Drop CSV file(s) here, or <label for="file-input" class="file-label">browse</label></p>
+      <input type="file" id="file-input" accept=".csv" multiple>
+      <p class="drop-hint">Supports Cash App and PayPal CSVs — upload one or both</p>
+    </div>
+    <div id="upload-status" class="upload-status hidden"></div>
+    <div class="upload-actions hidden" id="upload-actions">
+      <button id="clear-all-btn" class="btn btn-danger">Clear All Data</button>
+    </div>
+  </section>
+
+  <!-- Navigation Tabs -->
+  <nav id="main-nav" class="main-nav hidden">
+    <button class="tab-btn active" data-tab="transactions">Transactions</button>
+    <button class="tab-btn" data-tab="by-client">By Client</button>
+    <button class="tab-btn" data-tab="by-month">By Month</button>
+    <button class="tab-btn" data-tab="schedule-c">Schedule C</button>
+    <div class="nav-spacer"></div>
+    <button id="export-btn" class="btn btn-secondary">Export CSV</button>
+    <button id="print-btn" class="btn btn-secondary">Print</button>
+  </nav>
+
+  <!-- Transactions Tab -->
+  <section id="tab-transactions" class="tab-content active">
+    <div class="filter-bar">
+      <select id="filter-source">
+        <option value="">All Sources</option>
+        <option value="Cash App">Cash App</option>
+        <option value="PayPal">PayPal</option>
+      </select>
+      <select id="filter-category">
+        <option value="">All Categories</option>
+        <optgroup label="── Income ──">
+          <option value="Contract Income">Contract Income</option>
+          <option value="Recurring Income">Recurring Income</option>
+          <option value="Other Income">Other Income</option>
+        </optgroup>
+        <optgroup label="── Expenses ──">
+          <option value="Materials &amp; Supplies">Materials &amp; Supplies</option>
+          <option value="Labor (Paid)">Labor (Paid)</option>
+          <option value="Subcontractor">Subcontractor</option>
+          <option value="Equipment">Equipment</option>
+          <option value="Fuel &amp; Transportation">Fuel &amp; Transportation</option>
+          <option value="Tools &amp; Equipment">Tools &amp; Equipment</option>
+          <option value="Permits &amp; Fees">Permits &amp; Fees</option>
+          <option value="Business Expense">Business Expense</option>
+          <option value="Other Expense">Other Expense</option>
+        </optgroup>
+        <optgroup label="── Other ──">
+          <option value="Transfer In">Transfer In</option>
+          <option value="Transfer Out">Transfer Out</option>
+          <option value="Refund">Refund</option>
+          <option value="Bitcoin">Bitcoin (excluded)</option>
+        </optgroup>
+      </select>
+      <input type="text" id="filter-client" placeholder="Filter by client...">
+      <input type="month" id="filter-month" title="Filter by month">
+      <button id="filter-reset" class="btn btn-sm">Reset</button>
+    </div>
+
+    <div class="table-wrap">
+      <table id="txn-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Source</th>
+            <th>Type</th>
+            <th class="num">Gross</th>
+            <th class="num">Fee</th>
+            <th class="num">Net</th>
+            <th>Counterparty</th>
+            <th>Client <span class="editable-hint">(click to edit)</span></th>
+            <th>Category <span class="editable-hint">(click to edit)</span></th>
+            <th>Notes <span class="editable-hint">(click to edit)</span></th>
+          </tr>
+        </thead>
+        <tbody id="txn-body"></tbody>
+      </table>
+    </div>
+    <p id="txn-empty" class="empty-msg hidden">No transactions match the current filters.</p>
+  </section>
+
+  <!-- By Client Tab -->
+  <section id="tab-by-client" class="tab-content">
+    <div id="by-client-content"></div>
+  </section>
+
+  <!-- By Month Tab -->
+  <section id="tab-by-month" class="tab-content">
+    <div id="by-month-content"></div>
+  </section>
+
+  <!-- Schedule C Tab -->
+  <section id="tab-schedule-c" class="tab-content">
+    <div id="schedule-c-content"></div>
+  </section>
+
+</main>
+
+<!-- Inline editor popup -->
+<div id="editor-popup" class="editor-popup hidden">
+  <div class="editor-popup-inner">
+    <label id="editor-label"></label>
+    <input type="text" id="editor-input" autocomplete="off">
+    <div id="editor-suggestions" class="editor-suggestions"></div>
+    <div class="editor-actions">
+      <button id="editor-save" class="btn btn-primary">Save</button>
+      <button id="editor-cancel" class="btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+<div id="editor-overlay" class="editor-overlay hidden"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+<script src="parsers/cashapp.js"></script>
+<script src="parsers/paypal.js"></script>
+<script src="reports/byClient.js"></script>
+<script src="reports/byMonth.js"></script>
+<script src="reports/scheduleC.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
