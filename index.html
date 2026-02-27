@@ -31,9 +31,9 @@
       </div>
     </div>
     <div id="drop-zone" class="drop-zone">
-      <p>Drop CSV file(s) here, or <label for="file-input" class="file-label">browse</label></p>
-      <input type="file" id="file-input" accept=".csv" multiple>
-      <p class="drop-hint">Supports Cash App and PayPal CSVs — upload one or both</p>
+      <p>Drop CSV or PDF file(s) here, or <label for="file-input" class="file-label">browse</label></p>
+      <input type="file" id="file-input" accept=".csv,.pdf" multiple>
+      <p class="drop-hint">CSV: transaction history export &nbsp;|&nbsp; PDF: monthly statement — review parsed rows after import</p>
     </div>
     <div id="upload-status" class="upload-status hidden"></div>
     <div class="upload-actions hidden" id="upload-actions">
@@ -104,6 +104,7 @@
             <th>Client <span class="editable-hint">(click to edit)</span></th>
             <th>Category <span class="editable-hint">(click to edit)</span></th>
             <th>Notes <span class="editable-hint">(click to edit)</span></th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="txn-body"></tbody>
@@ -145,8 +146,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="parsers/cashapp.js"></script>
 <script src="parsers/paypal.js"></script>
+<script src="parsers/pdf.js"></script>
 <script src="reports/byClient.js"></script>
 <script src="reports/byMonth.js"></script>
 <script src="reports/scheduleC.js"></script>

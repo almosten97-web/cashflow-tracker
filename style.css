@@ -270,6 +270,38 @@ tbody tr:hover { background: #f8fafc; }
 tbody tr.bitcoin-row { opacity: .6; background: #fffbeb; }
 tbody tr.bitcoin-row:hover { background: #fef3c7; }
 
+tbody tr.pdf-row { background: #f0f4ff; }
+tbody tr.pdf-row:hover { background: #e8eeff; }
+
+.pdf-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  background: #e0e7ff;
+  color: #3730a3;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.delete-row-btn {
+  background: none;
+  border: none;
+  color: #d1d5db;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color .15s, background .15s;
+  line-height: 1;
+}
+
+.delete-row-btn:hover {
+  color: var(--danger);
+  background: #fee2e2;
+}
+
 td {
   padding: 9px 12px;
   vertical-align: middle;

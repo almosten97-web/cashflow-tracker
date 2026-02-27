@@ -62,6 +62,11 @@ async function clearDB() {
   allTransactions = [];
 }
 
+// ─── PDF Upload & Parsing ────────────────────────────────────────────────────
+async function processPDFFile(file) {
+  return window.PDFParser.parse(file);
+}
+
 // ─── CSV Upload & Parsing ────────────────────────────────────────────────────
 function detectParser(headers) {
   if (window.CashAppParser.detect(headers)) return window.CashAppParser;
@@ -101,13 +106,21 @@ async function handleFiles(files) {
   let totalNew = 0, totalSkipped = 0;
 
   for (const file of files) {
-    if (!file.name.endsWith('.csv') && !file.name.endsWith('.CSV')) {
-      showStatus(`Skipped "${file.name}" — not a CSV file.`, 'error');
+    const name  = file.name.toLowerCase();
+    const isPDF = name.endsWith('.pdf');
+    const isCSV = name.endsWith('.csv');
+
+    if (!isPDF && !isCSV) {
+      showStatus(`Skipped "${file.name}" — only CSV and PDF files are supported.`, 'error');
       continue;
     }
 
     try {
-      const { parsed, source } = await processCSVFile(file);
+      showStatus(`Reading "${file.name}"…`, 'success');
+      const { parsed, source } = isPDF
+        ? await processPDFFile(file)
+        : await processCSVFile(file);
+
       const existing = new Set(allTransactions.map(t => t.id));
 
       for (const txn of parsed) {
@@ -115,7 +128,6 @@ async function handleFiles(files) {
           totalSkipped++;
           continue;
         }
-        // Merge any persisted user edits that may exist under the same ID
         const persisted = await db.get('transactions', txn.id);
         const merged = persisted
           ? { ...txn, userCategory: persisted.userCategory, userClient: persisted.userClient, notes: persisted.notes }
@@ -126,8 +138,9 @@ async function handleFiles(files) {
         existing.add(txn.id);
       }
 
+      const pdfNote = isPDF ? ' — PDF rows are highlighted; review and delete any that look wrong' : '';
       showStatus(
-        `Imported ${totalNew} new transaction(s) from ${source}${totalSkipped ? ` (${totalSkipped} duplicates skipped)` : ''}.`,
+        `Imported ${totalNew} new transaction(s) from ${source}${totalSkipped ? ` (${totalSkipped} duplicates skipped)` : ''}${pdfNote}.`,
         'success'
       );
     } catch (err) {
@@ -205,12 +218,15 @@ function renderTransactionTable() {
     const client  = t.userClient   || '';
     const notes   = t.notes        || '';
     const cp      = t.counterparty || '';
-    const rowCls  = t.isBitcoin ? 'bitcoin-row' : '';
+    const rowCls  = [
+      t.isBitcoin  ? 'bitcoin-row' : '',
+      t.fromPDF    ? 'pdf-row'     : '',
+    ].filter(Boolean).join(' ');
 
     return `
       <tr class="${rowCls}" data-id="${esc(t.id)}">
         <td>${t.date}</td>
-        <td>${sourceBadge(t.source)}</td>
+        <td>${sourceBadge(t.source, t.fromPDF)}</td>
         <td>${esc(t.type)}</td>
         <td class="num ${t.gross >= 0 ? 'amount-pos' : 'amount-neg'}">${money(t.gross)}</td>
         <td class="num ${t.fee < 0 ? 'amount-neg' : ''}">${money(t.fee)}</td>
@@ -222,6 +238,7 @@ function renderTransactionTable() {
             title="Click to change category">${catBadge(cat)}</td>
         <td class="editable ${notes ? 'has-value' : ''}" data-field="notes" data-type="notes"
             title="Click to add notes">${esc(notes) || '—'}</td>
+        <td><button class="delete-row-btn" title="Delete this transaction">✕</button></td>
       </tr>
     `;
   }).join('');
@@ -234,6 +251,14 @@ function renderTransactionTable() {
       const field = cell.dataset.field;
       const type  = cell.dataset.type;
       openEditor(cell, id, field, type);
+    });
+  });
+
+  // Delete row buttons
+  tbody.querySelectorAll('.delete-row-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.closest('tr').dataset.id;
+      await deleteTransaction(id);
     });
   });
 }
@@ -367,6 +392,14 @@ function closeEditor() {
   document.getElementById('editor-suggestions').innerHTML = '';
 }
 
+// ─── Delete transaction ───────────────────────────────────────────────────────
+async function deleteTransaction(id) {
+  await db.delete('transactions', id);
+  allTransactions = allTransactions.filter(t => t.id !== id);
+  renderTransactionTable();
+  updateSummaryBar();
+}
+
 // ─── Export CSV ───────────────────────────────────────────────────────────────
 function exportCSV() {
   const rows = filteredTransactions();
@@ -433,9 +466,10 @@ function money(n) {
   return (n < 0 ? '-' : '') + '$' + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-function sourceBadge(source) {
+function sourceBadge(source, fromPDF) {
   const cls = source === 'Cash App' ? 'source-cashapp' : 'source-paypal';
-  return `<span class="source-badge ${cls}">${esc(source)}</span>`;
+  const pdf = fromPDF ? ' <span class="pdf-tag">PDF</span>' : '';
+  return `<span class="source-badge ${cls}">${esc(source)}</span>${pdf}`;
 }
 
 function catBadge(cat) {
@@ -456,6 +490,7 @@ function catClass(cat) {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
+  window.PDFParser.init(); // set PDF.js worker URL
   await initDB();
   await loadAllFromDB();
 
